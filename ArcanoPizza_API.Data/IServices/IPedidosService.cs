@@ -27,4 +27,6 @@ public interface IPedidosService
         CancellationToken ct);
 
     Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialDiaAsync(CancellationToken ct);
+
+    Task<IReadOnlyList<PedidoDashboardDto>> ObtenerActivasSalonAsync(CancellationToken ct);
 }

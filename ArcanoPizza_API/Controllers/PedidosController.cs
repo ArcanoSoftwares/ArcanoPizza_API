@@ -141,4 +141,13 @@ public class PedidosController : ControllerBase
         var historial = await _pedidos.ObtenerHistorialDiaAsync(ct);
         return Ok(historial);
     }
+
+    // NUEVO ENDPOINT: Conecta la vista principal de la app móvil
+    [HttpGet("activas-salon")]
+    [Authorize(Roles = "Empleado,Administrador,Tecnico,Despachador,Operador")]
+    public async Task<ActionResult<IReadOnlyList<PedidoDashboardDto>>> GetActivasSalon(CancellationToken ct)
+    {
+        var activas = await _pedidos.ObtenerActivasSalonAsync(ct);
+        return Ok(activas);
+    }
 }

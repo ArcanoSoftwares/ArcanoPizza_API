@@ -158,6 +158,25 @@ public class PedidosService : IPedidosService
                 return (false, "No autorizado para modificar este pedido.", 403, null);
         }
 
+        // ====================================================================
+        // VALIDACIÓN DE TRANSICIONES DE ESTADOS (Evita saltos ilógicos)
+        // ====================================================================
+        var estadoActual = pedidoInfo.Estado ?? "Pendiente";
+        var transicionesPermitidas = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Pendiente", new List<string> { "En Preparación", "Cancelado" } },
+            { "En Preparación", new List<string> { "Lista para entregar", "Cancelado" } },
+            { "Lista para entregar", new List<string> { "Entregado", "Pagado", "Cancelado" } }
+        };
+
+        if (transicionesPermitidas.ContainsKey(estadoActual))
+        {
+            if (!transicionesPermitidas[estadoActual].Contains(nuevoEstado, StringComparer.OrdinalIgnoreCase))
+            {
+                return (false, $"Transición inválida. No se puede pasar de '{estadoActual}' a '{nuevoEstado}'.", 400, null);
+            }
+        }
+
         var exito = await _pedidoRepository.ActualizarEstadoAsync(idPedido, nuevoEstado, ct);
         if (!exito)
             return (false, $"Error al actualizar en base de datos el pedido {idPedido}", 500, null);
@@ -205,7 +224,8 @@ public class PedidosService : IPedidosService
             .Include(p => p.Operador)
             .Include(p => p.PedidosItem)
                 .ThenInclude(pi => pi.Producto)
-            .Where(p => p.CreatedAt >= inicioDia)
+            // MODIFICADO: Solo jala las órdenes de tipo "Salon"
+            .Where(p => p.CreatedAt >= inicioDia && p.TipoEntrega == "Salon")
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
@@ -215,6 +235,39 @@ public class PedidosService : IPedidosService
             p.CreatedAt,
             p.Estado,
             p.PedidosItem.Select(pi => $"{pi.Cantidad}x {(pi.Producto?.Nombre ?? "(producto)")}").ToList()
+        )).ToList().AsReadOnly();
+    }
+
+    // NUEVO: Método para traer la cola de trabajo de órdenes activas (solo Salón)
+    public async Task<IReadOnlyList<PedidoDashboardDto>> ObtenerActivasSalonAsync(CancellationToken ct)
+    {
+        // Se asume que las órdenes activas son las que no están terminadas
+        var estadosInactivos = new[] { "Entregado", "Pagado", "Cancelado" };
+
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Usuario)
+            .Include(p => p.PedidosItem)
+                .ThenInclude(pi => pi.Producto)
+            .Where(p => p.TipoEntrega == "Salon" && !estadosInactivos.Contains(p.Estado))
+            .OrderBy(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+        return pedidos.Select(p => new PedidoDashboardDto(
+            Id: $"ORD-{p.IdPedido:D6}",
+            Estado: p.Estado,
+            TipoEntrega: p.TipoEntrega,
+            Urgente: false,
+            HoraRecibido: p.CreatedAt.ToString("HH:mm"),
+            HoraEntrega: "",
+            Cliente: new ClienteResumenDto(p.Usuario?.NombreUsuario ?? "Mesa Salón", "", ""),
+            Productos: p.PedidosItem.Select(pi => new ProductoResumenDto(
+                Cantidad: pi.Cantidad,
+                Nombre: pi.Producto?.Nombre ?? "",
+                Nota: null,
+                Ingredientes: pi.Producto?.Ingredientes ?? ""
+            )).ToList(),
+            Total: p.Total
         )).ToList().AsReadOnly();
     }
 }
