@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 using System.Text;
@@ -20,5 +20,9 @@ namespace ArcanoPizza_API.DTOs
         public string Tipo { get; set; } = string.Empty;
 
         public bool Activo { get; set; }
+
+        /// <summary>Si viene con valor, se actualiza el hash de contraseña.</summary>
+        [MinLength(4)]
+        public string? Password { get; set; }
     }
 }

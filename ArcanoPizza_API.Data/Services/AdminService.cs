@@ -49,14 +49,15 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<(UsuarioResponseDto? Ok, string? Error)> CrearUsuarioAsync(UsuarioAdminDto dto)
+    public async Task<(UsuarioResponseDto? Ok, string? Error)> CrearUsuarioAsync(UsuarioAdminDto dto, string passwordHash)
     {
         var usuario = new Usuario
         {
             NombreUsuario = dto.Nombre,
-            Correo = dto.Email,
+            Correo = dto.Email.Trim().ToLowerInvariant(),
             Telefono = dto.Telefono,
             Rol = dto.Tipo,
+            PasswordHash = passwordHash,
             Activo = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -82,17 +83,19 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<(bool Found, string? Error)> UpdateUsuarioAsync(int id, UsuarioUpdateDto dto)
+    public async Task<(bool Found, string? Error)> UpdateUsuarioAsync(int id, UsuarioUpdateDto dto, string? passwordHash)
     {
         var usuario = await _repo.GetUsuarioByIdAsync(id);
         if (usuario is null) return (false, null);
 
         usuario.NombreUsuario = dto.Nombre;
-        usuario.Correo = dto.Email;
+        usuario.Correo = dto.Email.Trim().ToLowerInvariant();
         usuario.Telefono = dto.Telefono;
         usuario.Rol = dto.Tipo;
         usuario.Activo = dto.Activo;
         usuario.UpdatedAt = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+            usuario.PasswordHash = passwordHash;
 
         var actualizado = await _repo.ActualizarUsuarioAsync(usuario);
         if (actualizado is null) return (true, "No se pudo actualizar el usuario");

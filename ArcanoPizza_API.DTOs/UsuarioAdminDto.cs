@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
@@ -19,5 +19,9 @@ namespace ArcanoPizza_API.DTOs
         [Required]
         public string Tipo { get; set; }
 
+        /// <summary>Contraseña inicial para poder iniciar sesión.</summary>
+        [Required]
+        [MinLength(4)]
+        public string Password { get; set; } = string.Empty;
     }
 }
