@@ -6,8 +6,8 @@ public interface IAdminService
 {
     Task<IEnumerable<UsuarioResponseDto>> GetUsuariosAsync();
     Task<UsuarioResponseDto?> GetUsuarioAsync(int id);
-    Task<(UsuarioResponseDto? Ok, string? Error)> CrearUsuarioAsync(UsuarioAdminDto dto, string passwordHash);
-    Task<(bool Found, string? Error)> UpdateUsuarioAsync(int id, UsuarioUpdateDto dto, string? passwordHash);
+    Task<(UsuarioResponseDto? Ok, string? Error)> CrearUsuarioAsync(UsuarioAdminDto dto);
+    Task<(bool Found, string? Error)> UpdateUsuarioAsync(int id, UsuarioUpdateDto dto);
     Task<bool> ToggleUsuarioAsync(int id);
     Task<bool> DeleteUsuarioAsync(int id);
 
