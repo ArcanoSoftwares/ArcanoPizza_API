@@ -20,5 +20,11 @@ namespace ArcanoPizza_API.DTOs
         public string Tipo { get; set; } = string.Empty;
 
         public bool Activo { get; set; }
+
+        [MinLength(
+            8,
+            ErrorMessage = "La contraseña debe tener al menos 8 caracteres"
+        )]
+        public string? Password { get; set; }
     }
 }

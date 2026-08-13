@@ -3,6 +3,7 @@ using ArcanoPizza_API.Data.IServices;
 using ArcanoPizza_API.DTOs;
 using ArcanoPizza_API.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace ArcanoPizza_API.Data.Services;
 
@@ -10,11 +11,16 @@ public class AdminService : IAdminService
 {
     private readonly IAdminRepository _repo;
     private readonly ArcanoPizzaDbContext _context;
+    private readonly IPasswordHasher<Usuario> _passwordHasher;
 
-    public AdminService(IAdminRepository repo, ArcanoPizzaDbContext context)
+    public AdminService(
+    IAdminRepository repo,
+    ArcanoPizzaDbContext context,
+    IPasswordHasher<Usuario> passwordHasher)
     {
         _repo = repo;
         _context = context;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<IEnumerable<UsuarioResponseDto>> GetUsuariosAsync()
@@ -49,55 +55,107 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<(UsuarioResponseDto? Ok, string? Error)> CrearUsuarioAsync(UsuarioAdminDto dto)
+    public async Task<(UsuarioResponseDto? Ok, string? Error)>
+    CrearUsuarioAsync(UsuarioAdminDto dto)
     {
+        var ahora = DateTime.UtcNow;
+
         var usuario = new Usuario
         {
-            NombreUsuario = dto.Nombre,
-            Correo = dto.Email,
-            Telefono = dto.Telefono,
-            Rol = dto.Tipo,
+            NombreUsuario = dto.Nombre.Trim(),
+            Correo = dto.Email.Trim().ToLowerInvariant(),
+            Telefono = string.IsNullOrWhiteSpace(dto.Telefono)
+                ? null
+                : dto.Telefono.Trim(),
+            Rol = dto.Tipo.Trim(),
             Activo = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = ahora,
+            UpdatedAt = ahora
         };
+
+        // Generar el hash de la contraseña.
+        // Nunca guardar dto.Password directamente.
+        usuario.PasswordHash =
+            _passwordHasher.HashPassword(usuario, dto.Password);
 
         try
         {
             var creado = await _repo.CrearUsuarioAsync(usuario);
-            return (new UsuarioResponseDto
-            {
-                Id = creado.IdUsuario,
-                Nombre = creado.NombreUsuario,
-                Email = creado.Correo,
-                Telefono = creado.Telefono,
-                Tipo = creado.Rol,
-                Activo = creado.Activo,
-                FechaMiembro = creado.CreatedAt
-            }, null);
+
+            return (
+                new UsuarioResponseDto
+                {
+                    Id = creado.IdUsuario,
+                    Nombre = creado.NombreUsuario,
+                    Email = creado.Correo,
+                    Telefono = creado.Telefono,
+                    Tipo = creado.Rol,
+                    Activo = creado.Activo,
+                    FechaMiembro = creado.CreatedAt
+                },
+                null
+            );
         }
         catch (Exception ex)
         {
-            return (null, ex.InnerException?.Message ?? ex.Message);
+            return (
+                null,
+                ex.InnerException?.Message ?? ex.Message
+            );
         }
     }
 
-    public async Task<(bool Found, string? Error)> UpdateUsuarioAsync(int id, UsuarioUpdateDto dto)
+    public async Task<(bool Found, string? Error)>
+    UpdateUsuarioAsync(int id, UsuarioUpdateDto dto)
     {
         var usuario = await _repo.GetUsuarioByIdAsync(id);
-        if (usuario is null) return (false, null);
 
-        usuario.NombreUsuario = dto.Nombre;
-        usuario.Correo = dto.Email;
-        usuario.Telefono = dto.Telefono;
-        usuario.Rol = dto.Tipo;
+        if (usuario is null)
+            return (false, null);
+
+        usuario.NombreUsuario = dto.Nombre.Trim();
+        usuario.Correo = dto.Email.Trim().ToLowerInvariant();
+
+        usuario.Telefono =
+            string.IsNullOrWhiteSpace(dto.Telefono)
+                ? null
+                : dto.Telefono.Trim();
+
+        usuario.Rol = dto.Tipo.Trim();
         usuario.Activo = dto.Activo;
         usuario.UpdatedAt = DateTime.UtcNow;
 
-        var actualizado = await _repo.ActualizarUsuarioAsync(usuario);
-        if (actualizado is null) return (true, "No se pudo actualizar el usuario");
+        // Solo cambiar la contraseña si el administrador
+        // ingresó una nueva.
+        if (!string.IsNullOrWhiteSpace(dto.Password))
+        {
+            usuario.PasswordHash =
+                _passwordHasher.HashPassword(
+                    usuario,
+                    dto.Password
+                );
+        }
 
-        return (true, null);
+        try
+        {
+            var actualizado =
+                await _repo.ActualizarUsuarioAsync(usuario);
+
+            if (actualizado is null)
+                return (
+                    true,
+                    "No se pudo actualizar el usuario"
+                );
+
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (
+                true,
+                ex.InnerException?.Message ?? ex.Message
+            );
+        }
     }
 
     public async Task<bool> ToggleUsuarioAsync(int id)
