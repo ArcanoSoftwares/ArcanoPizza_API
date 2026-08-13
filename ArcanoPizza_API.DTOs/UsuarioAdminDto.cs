@@ -7,21 +7,20 @@ namespace ArcanoPizza_API.DTOs
 {
     public class UsuarioAdminDto
     {
-        [Required]
-        public string Nombre { get; set; }
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
 
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
+        [Required(ErrorMessage = "El correo es obligatorio")]
+        [EmailAddress(ErrorMessage = "Formato de correo inválido")]
+        public string Email { get; set; } = string.Empty;
 
         public string? Telefono { get; set; }
 
-        [Required]
-        public string Tipo { get; set; }
+        [Required(ErrorMessage = "El rol es obligatorio")]
+        public string Tipo { get; set; } = string.Empty;
 
-        /// <summary>Contraseña inicial para poder iniciar sesión.</summary>
-        [Required]
-        [MinLength(4)]
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
+        [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
         public string Password { get; set; } = string.Empty;
     }
 }

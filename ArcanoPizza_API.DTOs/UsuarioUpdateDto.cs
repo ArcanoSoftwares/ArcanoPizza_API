@@ -21,8 +21,10 @@ namespace ArcanoPizza_API.DTOs
 
         public bool Activo { get; set; }
 
-        /// <summary>Si viene con valor, se actualiza el hash de contraseña.</summary>
-        [MinLength(4)]
+        [MinLength(
+            8,
+            ErrorMessage = "La contraseña debe tener al menos 8 caracteres"
+        )]
         public string? Password { get; set; }
     }
 }
