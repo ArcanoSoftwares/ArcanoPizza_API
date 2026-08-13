@@ -11,7 +11,6 @@ namespace ArcanoPizza_API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-
 public class PedidosController : ControllerBase
 {
     private readonly IPedidosService _pedidos;
@@ -67,7 +66,6 @@ public class PedidosController : ControllerBase
         return Created(location, detalle);
     }
 
-    // GET: api/Pedidos/dashboard
     [HttpGet("dashboard")]
     [Authorize(Roles = "Empleado,Administrador,Tecnico")]
     public async Task<ActionResult<IReadOnlyList<PedidoDashboardDto>>> GetDashboard(CancellationToken ct)
@@ -76,7 +74,6 @@ public class PedidosController : ControllerBase
         return Ok(dto);
     }
 
-    // GET: api/Pedidos/mis-asignados
     [HttpGet("mis-asignados")]
     [Authorize(Roles = "Repartidor")]
     public async Task<ActionResult<IReadOnlyList<PedidoDashboardDto>>> MisAsignados(CancellationToken ct)
@@ -87,14 +84,14 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/estado")]
-    [Authorize(Roles = "Empleado,Administrador,Tecnico,Repartidor")]
+    [Authorize(Roles = "Empleado,Administrador,Tecnico,Repartidor,Despachador")]
     public async Task<IActionResult> ActualizarEstado(int id, [FromBody] string nuevoEstado, CancellationToken ct)
     {
         int? actingUserId = null;
         try { actingUserId = User.GetUsuarioId(); } catch { /* ignore */ }
         var rol = User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;
 
-        var (ok, error, status) = await _pedidos.ActualizarEstadoAsync(id, nuevoEstado, actingUserId, rol, ct);
+        var (ok, error, status, meseroId) = await _pedidos.ActualizarEstadoAsync(id, nuevoEstado, actingUserId, rol, ct);
         if (!ok)
             return status switch
             {
@@ -105,10 +102,15 @@ public class PedidosController : ControllerBase
                 _ => Problem(error),
             };
 
+        if (string.Equals(nuevoEstado, "Lista para entregar", StringComparison.OrdinalIgnoreCase)
+            && meseroId.HasValue)
+        {
+            // Hook para notificación push / watch cuando se implemente FCM o SignalR.
+        }
+
         return Ok(new { mensaje = "Estado actualizado correctamente", estadoAsignado = nuevoEstado });
     }
 
-    // GET: api/Pedidos/repartidores
     [HttpGet("repartidores")]
     public async Task<ActionResult<IEnumerable<EmpleadoResumenDto>>> GetRepartidores(CancellationToken ct)
     {
@@ -116,7 +118,6 @@ public class PedidosController : ControllerBase
         return Ok(empleados);
     }
 
-    // PATCH: api/Pedidos/{id}/asignar-repartidor
     [HttpPatch("{id:int}/asignar-repartidor")]
     [Authorize(Roles = "Empleado,Administrador,Tecnico")]
     public async Task<IActionResult> AsignarRepartidor(int id, [FromBody] AsignarRepartidorRequest request, CancellationToken ct)
@@ -133,4 +134,11 @@ public class PedidosController : ControllerBase
         return Ok(new { mensaje = "Repartidor asignado correctamente" });
     }
 
+    [HttpGet("historial-despachador")]
+    [Authorize(Roles = "Empleado,Administrador,Tecnico,Despachador")]
+    public async Task<ActionResult<IReadOnlyList<HistorialPedidoResponseDto>>> ObtenerHistorialDespachador(CancellationToken ct)
+    {
+        var historial = await _pedidos.ObtenerHistorialDiaAsync(ct);
+        return Ok(historial);
+    }
 }

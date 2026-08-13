@@ -12,7 +12,7 @@ public interface IPedidosService
     Task<IReadOnlyList<PedidoDashboardDto>> DashboardAsync(CancellationToken ct);
     Task<IReadOnlyList<PedidoDashboardDto>> MisAsignadosAsync(int repartidorId, CancellationToken ct);
 
-    Task<(bool Ok, string? Error, int? HttpStatusCode)> ActualizarEstadoAsync(
+    Task<(bool Ok, string? Error, int? HttpStatusCode, int? MeseroId)> ActualizarEstadoAsync(
         int idPedido,
         string nuevoEstado,
         int? actingUserId,
@@ -25,4 +25,6 @@ public interface IPedidosService
         int idPedido,
         int repartidorId,
         CancellationToken ct);
+
+    Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialDiaAsync(CancellationToken ct);
 }

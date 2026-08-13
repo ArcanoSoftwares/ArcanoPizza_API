@@ -124,6 +124,8 @@ public class AdminService : IAdminService
         usuario.Rol = dto.Tipo.Trim();
         usuario.Activo = dto.Activo;
         usuario.UpdatedAt = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(passwordHash))
+            usuario.PasswordHash = passwordHash;
 
         // Solo cambiar la contraseña si el administrador
         // ingresó una nueva.

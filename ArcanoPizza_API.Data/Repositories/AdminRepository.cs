@@ -1,4 +1,4 @@
-﻿using ArcanoPizza_API.Data.Interface;
+using ArcanoPizza_API.Data.Interface;
 using ArcanoPizza_API.Model;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -47,6 +47,8 @@ namespace ArcanoPizza_API.Data.Repositories
             existente.Rol = usuario.Rol;
             existente.Activo = usuario.Activo;
             existente.UpdatedAt = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(usuario.PasswordHash))
+                existente.PasswordHash = usuario.PasswordHash;
 
             await _context.SaveChangesAsync();
             return existente;

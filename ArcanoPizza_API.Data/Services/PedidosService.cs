@@ -135,7 +135,7 @@ public class PedidosService : IPedidosService
         )).ToList();
     }
 
-    public async Task<(bool Ok, string? Error, int? HttpStatusCode)> ActualizarEstadoAsync(
+    public async Task<(bool Ok, string? Error, int? HttpStatusCode, int? MeseroId)> ActualizarEstadoAsync(
         int idPedido,
         string nuevoEstado,
         int? actingUserId,
@@ -143,25 +143,27 @@ public class PedidosService : IPedidosService
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(nuevoEstado))
-            return (false, "El estado no puede estar vacío.", 400);
+            return (false, "El estado no puede estar vacío.", 400, null);
+
+        var pedidoInfo = await _db.Pedidos.AsNoTracking().FirstOrDefaultAsync(p => p.IdPedido == idPedido, ct);
+        if (pedidoInfo is null)
+            return (false, $"No se encontró el pedido con ID {idPedido}", 404, null);
 
         if (string.Equals(actingRole, "Repartidor", StringComparison.OrdinalIgnoreCase))
         {
             if (actingUserId is null)
-                return (false, "Token sin identificador de usuario válido.", 401);
+                return (false, "Token sin identificador de usuario válido.", 401, null);
 
-            var pedido = await _db.Pedidos.AsNoTracking().FirstOrDefaultAsync(p => p.IdPedido == idPedido, ct);
-            if (pedido is null)
-                return (false, $"No se encontró el pedido con ID {idPedido}", 404);
-            if (pedido.FkIdRepartidor != actingUserId.Value)
-                return (false, "No autorizado para modificar este pedido.", 403);
+            if (pedidoInfo.FkIdRepartidor != actingUserId.Value)
+                return (false, "No autorizado para modificar este pedido.", 403, null);
         }
 
         var exito = await _pedidoRepository.ActualizarEstadoAsync(idPedido, nuevoEstado, ct);
         if (!exito)
-            return (false, $"No se encontró el pedido con ID {idPedido}", 404);
+            return (false, $"Error al actualizar en base de datos el pedido {idPedido}", 500, null);
 
-        return (true, null, null);
+        int? meseroId = pedidoInfo.FkIdOperador ?? pedidoInfo.FkIdUsuario;
+        return (true, null, null, meseroId);
     }
 
     public async Task<IReadOnlyList<EmpleadoResumenDto>> GetRepartidoresAsync(CancellationToken ct)
@@ -192,5 +194,27 @@ public class PedidosService : IPedidosService
         await _db.SaveChangesAsync(ct);
         return (true, null, null);
     }
-}
 
+    public async Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialDiaAsync(CancellationToken ct)
+    {
+        var inicioDia = DateTime.UtcNow.Date;
+
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Usuario)
+            .Include(p => p.Operador)
+            .Include(p => p.PedidosItem)
+                .ThenInclude(pi => pi.Producto)
+            .Where(p => p.CreatedAt >= inicioDia)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+        return pedidos.Select(p => new HistorialPedidoResponseDto(
+            p.IdPedido,
+            p.Operador?.NombreUsuario ?? p.Usuario?.NombreUsuario ?? "Desconocido",
+            p.CreatedAt,
+            p.Estado,
+            p.PedidosItem.Select(pi => $"{pi.Cantidad}x {(pi.Producto?.Nombre ?? "(producto)")}").ToList()
+        )).ToList().AsReadOnly();
+    }
+}
