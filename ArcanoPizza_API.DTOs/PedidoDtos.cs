@@ -44,7 +44,6 @@ public record DireccionDto(int IdDireccion, string Calle, string Colonia, string
 
 public record DireccionCrearDto(string Calle, string Colonia, string CodigoPostal);
 
-// 1. El DTO principal para la vista del empleado
 public record PedidoDashboardDto(
     string Id,
     string Estado,
@@ -54,23 +53,28 @@ public record PedidoDashboardDto(
     string HoraEntrega,
     ClienteResumenDto Cliente,
     IReadOnlyList<ProductoResumenDto> Productos,
-    decimal Total
-);
+    decimal Total);
 
-// 2. DTOs de apoyo solo con la info necesaria para las tarjetas
 public record ClienteResumenDto(
     string Nombre,
     string Telefono,
-    string Direccion
-);
+    string Direccion);
 
 public record ProductoResumenDto(
     int Cantidad,
     string Nombre,
     string? Nota,
-    string Ingredientes
-);
+    string Ingredientes);
 
-// El DTO que coincidirá exactamente con tu interfaz de Angular
 public record EmpleadoResumenDto(int IdUsuario, string NombreUsuario);
+
 public record AsignarRepartidorRequest(int RepartidorId);
+
+public record ActualizarEstadoPedidoDto(string NuevoEstado);
+
+public record HistorialPedidoResponseDto(
+    int PedidoId,
+    string NombreMesero,
+    DateTime Fecha,
+    string Estado,
+    IReadOnlyList<string> Productos);
