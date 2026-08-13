@@ -42,3 +42,49 @@ public record PedidoDetalleDto(
 public record DireccionDto(int IdDireccion, string Calle, string Colonia, string CodigoPostal);
 
 public record DireccionCrearDto(string Calle, string Colonia, string CodigoPostal);
+<<<<<<< Updated upstream
+=======
+
+// 1. El DTO principal para la vista del empleado
+public record PedidoDashboardDto(
+    string Id,
+    string Estado,
+    string TipoEntrega,
+    bool Urgente,
+    string HoraRecibido,
+    string HoraEntrega,
+    ClienteResumenDto Cliente,
+    IReadOnlyList<ProductoResumenDto> Productos,
+    decimal Total
+);
+
+// 2. DTOs de apoyo solo con la info necesaria para las tarjetas
+public record ClienteResumenDto(
+    string Nombre,
+    string Telefono,
+    string Direccion
+);
+
+public record ProductoResumenDto(
+    int Cantidad,
+    string Nombre,
+    string? Nota,
+    string Ingredientes
+);
+
+// El DTO que coincidirá exactamente con tu interfaz de Angular
+public record EmpleadoResumenDto(int IdUsuario, string NombreUsuario);
+public record AsignarRepartidorRequest(int RepartidorId);
+
+// DTO para recibir el nuevo estado ("Lista para entregar", etc.)
+public record ActualizarEstadoPedidoDto(string NuevoEstado);
+
+// DTO para devolver la lista del historial del día
+public record HistorialPedidoResponseDto(
+    int PedidoId,
+    string NombreMesero,
+    DateTime Fecha,
+    string Estado,
+    IReadOnlyList<string> Productos
+);
+>>>>>>> Stashed changes
