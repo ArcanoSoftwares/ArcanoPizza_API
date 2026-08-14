@@ -54,7 +54,11 @@ public static class ArcanoPizzaCoreExtensions
 
         services.AddAuthorization();
         services.AddControllers();
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+            options.AddOperationTransformer<BearerSecurityRequirementTransformer>();
+        });
 
         services.AddHttpLogging(options =>
         {

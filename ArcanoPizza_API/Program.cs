@@ -34,6 +34,7 @@ app.MapOpenApi();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/openapi/v1.json", "ArcanoPizza API v1");
+    options.EnablePersistAuthorization();
 });
 
 app.UseAuthentication();
