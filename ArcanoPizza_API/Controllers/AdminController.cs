@@ -1,8 +1,6 @@
 using ArcanoPizza_API.Data.IServices;
 using ArcanoPizza_API.DTOs;
-using ArcanoPizza_API.Model;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArcanoPizza_API.Controllers;
@@ -13,12 +11,10 @@ namespace ArcanoPizza_API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _admin;
-    private readonly IPasswordHasher<Usuario> _passwordHasher;
 
-    public AdminController(IAdminService admin, IPasswordHasher<Usuario> passwordHasher)
+    public AdminController(IAdminService admin)
     {
         _admin = admin;
-        _passwordHasher = passwordHasher;
     }
 
     [HttpGet("usuarios")]
@@ -42,11 +38,7 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Password))
             return BadRequest(new { mensaje = "La contraseña es obligatoria." });
 
-        var hash = _passwordHasher.HashPassword(
-            new Usuario { Correo = dto.Email },
-            dto.Password);
-
-        var (ok, error) = await _admin.CrearUsuarioAsync(dto, hash);
+        var (ok, error) = await _admin.CrearUsuarioAsync(dto);
         if (error is not null)
             return StatusCode(500, new { mensaje = "Error al guardar usuario", error });
 
@@ -58,15 +50,7 @@ public class AdminController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        string? hash = null;
-        if (!string.IsNullOrWhiteSpace(dto.Password))
-        {
-            hash = _passwordHasher.HashPassword(
-                new Usuario { Correo = dto.Email },
-                dto.Password);
-        }
-
-        var (found, error) = await _admin.UpdateUsuarioAsync(id, dto, hash);
+        var (found, error) = await _admin.UpdateUsuarioAsync(id, dto);
         if (!found) return NotFound();
         if (error is not null) return StatusCode(500, error);
 
