@@ -26,8 +26,13 @@ public class SecurityHeadersMiddleware
         // Política de permisos (deshabilita features no usadas)
         context.Response.Headers.Append("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
 
-        // Content Security Policy (ajustar según necesidades del frontend)
-        context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'");
+        // Swagger UI necesita scripts/estilos inline; el resto de la API sigue con CSP estricto.
+        var path = context.Request.Path;
+        var isSwagger = path.StartsWithSegments("/swagger") || path.StartsWithSegments("/openapi");
+        var csp = isSwagger
+            ? "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"
+            : "default-src 'self'; frame-ancestors 'none'";
+        context.Response.Headers.Append("Content-Security-Policy", csp);
 
         await _next(context);
     }

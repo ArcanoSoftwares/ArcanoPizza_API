@@ -30,14 +30,11 @@ if (!app.Environment.IsDevelopment())
     app.UseRateLimiter();
 }
 
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/openapi/v1.json", "ArcanoPizza API v1");
-    });
-}
+    options.SwaggerEndpoint("/openapi/v1.json", "ArcanoPizza API v1");
+});
 
 app.UseAuthentication();
 app.UseMiddleware<AuditLogMiddleware>();
