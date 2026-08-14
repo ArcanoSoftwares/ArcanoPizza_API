@@ -48,4 +48,8 @@ public interface ISalonService
     Task<IReadOnlyList<OrdenSalonGestionDto>> ListarOrdenesActivasDespachadorAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialSalonDiaAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<MesaCobroPendienteDto>> ListarMesasCobroPendienteAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialOperadorDiaAsync(int operadorId, CancellationToken ct = default);
 }

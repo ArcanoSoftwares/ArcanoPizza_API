@@ -145,6 +145,21 @@ public class SalonController : ControllerBase
         return Ok(await _salon.ObtenerHistorialSalonDiaAsync(ct));
     }
 
+    [HttpGet("operador/mesas-cobro-pendiente")]
+    [Authorize(Roles = "Operador,Administrador")]
+    public async Task<ActionResult<IReadOnlyList<MesaCobroPendienteDto>>> MesasCobroPendiente(CancellationToken ct)
+    {
+        return Ok(await _salon.ListarMesasCobroPendienteAsync(ct));
+    }
+
+    [HttpGet("operador/historial-dia")]
+    [Authorize(Roles = "Operador,Administrador")]
+    public async Task<ActionResult<IReadOnlyList<HistorialPedidoResponseDto>>> HistorialOperadorDia(CancellationToken ct)
+    {
+        var userId = User.GetUsuarioId();
+        return Ok(await _salon.ObtenerHistorialOperadorDiaAsync(userId, ct));
+    }
+
     private string? GetRol() =>
         User.FindFirstValue(ClaimTypes.Role)
         ?? User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;

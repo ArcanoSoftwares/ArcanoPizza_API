@@ -69,6 +69,8 @@ public record CuentaMesaDto(
 
 public record CerrarMesaDto(string MetodoPago);
 
+public record MesaCobroPendienteDto(int MesaId, int NumeroMesa, decimal Total);
+
 public record NotificacionDto(
     int IdNotificacion,
     int IdPedido,

@@ -423,6 +423,56 @@ public class SalonService : ISalonService
             p.Mesa?.Numero)).ToList();
     }
 
+    public async Task<IReadOnlyList<MesaCobroPendienteDto>> ListarMesasCobroPendienteAsync(CancellationToken ct = default)
+    {
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Mesa)
+            .Where(p => p.TipoEntrega == SalonEstados.TipoEntregaSalon
+                        && p.Estado == SalonEstados.Entregado
+                        && p.FkIdMesa != null)
+            .ToListAsync(ct);
+
+        return pedidos
+            .GroupBy(p => p.FkIdMesa!.Value)
+            .Select(g =>
+            {
+                var mesa = g.First().Mesa;
+                return new MesaCobroPendienteDto(
+                    g.Key,
+                    mesa?.Numero ?? g.Key,
+                    g.Sum(p => p.Total));
+            })
+            .OrderBy(m => m.NumeroMesa)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialOperadorDiaAsync(
+        int operadorId,
+        CancellationToken ct = default)
+    {
+        var inicioDia = DateTime.UtcNow.Date;
+
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Mesa)
+            .Include(p => p.Operador)
+            .Include(p => p.PedidosItem).ThenInclude(i => i.Producto)
+            .Where(p => p.TipoEntrega == SalonEstados.TipoEntregaSalon
+                        && p.FkIdOperador == operadorId
+                        && p.CreatedAt >= inicioDia)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+        return pedidos.Select(p => new HistorialPedidoResponseDto(
+            p.IdPedido,
+            p.Operador?.NombreUsuario ?? "Desconocido",
+            p.CreatedAt,
+            p.Estado,
+            p.PedidosItem.Select(i => $"{i.Cantidad}x {(i.Producto?.Nombre ?? "(producto)")}").ToList(),
+            p.Mesa?.Numero)).ToList();
+    }
+
     private async Task LiberarMesaSiSinActivasAsync(int mesaId, int pedidoExcluidoId, CancellationToken ct)
     {
         var hayOtras = await _db.Pedidos.AnyAsync(
