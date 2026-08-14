@@ -131,6 +131,20 @@ public class SalonController : ControllerBase
         return Ok(await _salon.NotificacionesAsync(userId, ct));
     }
 
+    [HttpGet("despachador/ordenes-activas")]
+    [Authorize(Roles = "Administrador,Tecnico,Despachador")]
+    public async Task<ActionResult<IReadOnlyList<OrdenSalonGestionDto>>> OrdenesActivasDespachador(CancellationToken ct)
+    {
+        return Ok(await _salon.ListarOrdenesActivasDespachadorAsync(ct));
+    }
+
+    [HttpGet("despachador/historial-dia")]
+    [Authorize(Roles = "Administrador,Tecnico,Despachador")]
+    public async Task<ActionResult<IReadOnlyList<HistorialPedidoResponseDto>>> HistorialSalonDia(CancellationToken ct)
+    {
+        return Ok(await _salon.ObtenerHistorialSalonDiaAsync(ct));
+    }
+
     private string? GetRol() =>
         User.FindFirstValue(ClaimTypes.Role)
         ?? User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;

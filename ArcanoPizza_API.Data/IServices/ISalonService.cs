@@ -44,4 +44,8 @@ public interface ISalonService
         CancellationToken ct = default);
 
     Task<IReadOnlyList<NotificacionDto>> NotificacionesAsync(int userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<OrdenSalonGestionDto>> ListarOrdenesActivasDespachadorAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialSalonDiaAsync(CancellationToken ct = default);
 }

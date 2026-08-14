@@ -43,6 +43,15 @@ public record OrdenSalonDetalleDto(
 
 public record OrdenSalonEstadoDto(string Estado);
 
+public record OrdenSalonGestionDto(
+    int IdPedido,
+    string Estado,
+    decimal Total,
+    DateTime Creado,
+    int? NumeroMesa,
+    string? OperadorNombre,
+    IReadOnlyList<string> Productos);
+
 public record CuentaMesaLineaDto(
     int IdPedido,
     string ProductoNombre,

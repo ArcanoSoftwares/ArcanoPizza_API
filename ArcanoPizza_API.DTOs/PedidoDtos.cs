@@ -77,4 +77,5 @@ public record HistorialPedidoResponseDto(
     string NombreMesero,
     DateTime Fecha,
     string Estado,
-    IReadOnlyList<string> Productos);
+    IReadOnlyList<string> Productos,
+    int? NumeroMesa = null);

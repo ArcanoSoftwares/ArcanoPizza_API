@@ -383,6 +383,46 @@ public class SalonService : ISalonService
             n.Leida)).ToList();
     }
 
+    public async Task<IReadOnlyList<OrdenSalonGestionDto>> ListarOrdenesActivasDespachadorAsync(CancellationToken ct = default)
+    {
+        var estadosActivos = new[] { SalonEstados.Pendiente, SalonEstados.EnPreparacion, SalonEstados.Listo };
+
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Mesa)
+            .Include(p => p.Operador)
+            .Include(p => p.PedidosItem).ThenInclude(i => i.Producto)
+            .Where(p => p.TipoEntrega == SalonEstados.TipoEntregaSalon
+                        && estadosActivos.Contains(p.Estado))
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+        return pedidos.Select(MapGestion).ToList();
+    }
+
+    public async Task<IReadOnlyList<HistorialPedidoResponseDto>> ObtenerHistorialSalonDiaAsync(CancellationToken ct = default)
+    {
+        var inicioDia = DateTime.UtcNow.Date;
+
+        var pedidos = await _db.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Mesa)
+            .Include(p => p.Operador)
+            .Include(p => p.PedidosItem).ThenInclude(i => i.Producto)
+            .Where(p => p.TipoEntrega == SalonEstados.TipoEntregaSalon
+                        && p.CreatedAt >= inicioDia)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+        return pedidos.Select(p => new HistorialPedidoResponseDto(
+            p.IdPedido,
+            p.Operador?.NombreUsuario ?? "Desconocido",
+            p.CreatedAt,
+            p.Estado,
+            p.PedidosItem.Select(i => $"{i.Cantidad}x {(i.Producto?.Nombre ?? "(producto)")}").ToList(),
+            p.Mesa?.Numero)).ToList();
+    }
+
     private async Task LiberarMesaSiSinActivasAsync(int mesaId, int pedidoExcluidoId, CancellationToken ct)
     {
         var hayOtras = await _db.Pedidos.AnyAsync(
@@ -423,6 +463,15 @@ public class SalonService : ISalonService
         p.Mesa?.Numero,
         p.FkIdOperador,
         p.Operador?.NombreUsuario);
+
+    private static OrdenSalonGestionDto MapGestion(Pedido p) => new(
+        p.IdPedido,
+        p.Estado,
+        p.Total,
+        p.CreatedAt,
+        p.Mesa?.Numero,
+        p.Operador?.NombreUsuario,
+        p.PedidosItem.Select(i => $"{i.Cantidad}x {(i.Producto?.Nombre ?? "(producto)")}").ToList());
 
     private static OrdenSalonDetalleDto MapDetalle(Pedido p) => new(
         p.IdPedido,
