@@ -214,7 +214,8 @@ public class PedidosService : IPedidosService
             p.Operador?.NombreUsuario ?? p.Usuario?.NombreUsuario ?? "Desconocido",
             p.CreatedAt,
             p.Estado,
-            p.PedidosItem.Select(pi => $"{pi.Cantidad}x {(pi.Producto?.Nombre ?? "(producto)")}").ToList()
-        )).ToList().AsReadOnly();
+            p.PedidosItem.Select(pi => $"{pi.Cantidad}x {(pi.Producto?.Nombre ?? "(producto)")}").ToList(),
+            null,
+            p.Total)).ToList().AsReadOnly();
     }
 }

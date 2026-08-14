@@ -420,7 +420,8 @@ public class SalonService : ISalonService
             p.CreatedAt,
             p.Estado,
             p.PedidosItem.Select(i => $"{i.Cantidad}x {(i.Producto?.Nombre ?? "(producto)")}").ToList(),
-            p.Mesa?.Numero)).ToList();
+            p.Mesa?.Numero,
+            p.Total)).ToList();
     }
 
     public async Task<IReadOnlyList<MesaCobroPendienteDto>> ListarMesasCobroPendienteAsync(CancellationToken ct = default)
@@ -470,7 +471,8 @@ public class SalonService : ISalonService
             p.CreatedAt,
             p.Estado,
             p.PedidosItem.Select(i => $"{i.Cantidad}x {(i.Producto?.Nombre ?? "(producto)")}").ToList(),
-            p.Mesa?.Numero)).ToList();
+            p.Mesa?.Numero,
+            p.Total)).ToList();
     }
 
     private async Task LiberarMesaSiSinActivasAsync(int mesaId, int pedidoExcluidoId, CancellationToken ct)

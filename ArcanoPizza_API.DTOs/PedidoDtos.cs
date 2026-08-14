@@ -78,4 +78,5 @@ public record HistorialPedidoResponseDto(
     DateTime Fecha,
     string Estado,
     IReadOnlyList<string> Productos,
-    int? NumeroMesa = null);
+    int? NumeroMesa = null,
+    decimal Total = 0);
