@@ -1,6 +1,7 @@
 # CI/CD API — Azure Pipelines (repo en GitHub)
 # Trigger: push a main. También se puede ejecutar manualmente.
 # Variables: AZURE_WEBAPP_NAME, AZURE_WEBAPP_PUBLISH_PROFILE (secreto)
+# Deploy: Zip Deploy a Kudu (compatible con App Service Linux/Windows)
 
 trigger:
   branches:
@@ -9,14 +10,15 @@ trigger:
 
 pr: none
 
+pool:
+  vmImage: ubuntu-latest
+
 stages:
   - stage: Build
     displayName: Build and publish
     jobs:
       - job: BuildApi
         displayName: .NET build
-        pool:
-          vmImage: ubuntu-latest
         steps:
           - checkout: self
 
@@ -62,39 +64,61 @@ stages:
     condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
     jobs:
       - job: DeployApi
-        displayName: Azure Web App
-        # PublishProfile + WebDeploy solo funciona en agente Windows.
-        pool:
-          vmImage: windows-latest
+        displayName: Azure Web App (Zip Deploy)
         steps:
           - download: current
             artifact: api-publish
             displayName: Download artifact
 
-          - powershell: |
-              $ErrorActionPreference = 'Stop'
-              $profilePath = Join-Path $env:AGENT_TEMPDIRECTORY 'publish-profile.xml'
-              Set-Content -Path $profilePath -Value $env:AZURE_WEBAPP_PUBLISH_PROFILE -Encoding UTF8
+          - bash: |
+              set -euo pipefail
 
-              $match = [regex]::Match(
-                (Get-Content -Raw $profilePath),
-                'userPWD="([^"]+)"'
-              )
-              if (-not $match.Success) {
-                throw 'No se encontró userPWD en el publish profile.'
-              }
-              $password = $match.Groups[1].Value
-              Write-Host "##vso[task.setvariable variable=PUBLISH_PROFILE_PASSWORD;issecret=true]$password"
-            displayName: Write publish profile
+              PUBLISH_DIR="$(Pipeline.Workspace)/api-publish"
+              ZIP_PATH="$(Agent.TempDirectory)/api-publish.zip"
+              PROFILE_PATH="$(Agent.TempDirectory)/publish-profile.xml"
+
+              printf '%s\n' "$AZURE_WEBAPP_PUBLISH_PROFILE" > "$PROFILE_PATH"
+
+              # Preferir el perfil MSDeploy (Web Deploy) del XML.
+              MSDEPLOY_LINE="$(grep -o 'publishMethod="MSDeploy"[^/]*' "$PROFILE_PATH" | head -n 1 || true)"
+              if [[ -z "$MSDEPLOY_LINE" ]]; then
+                MSDEPLOY_LINE="$(cat "$PROFILE_PATH")"
+              fi
+
+              USERNAME="$(printf '%s' "$MSDEPLOY_LINE" | grep -oP 'userName="\K[^"]+' | head -n 1 || true)"
+              PASSWORD="$(printf '%s' "$MSDEPLOY_LINE" | grep -oP 'userPWD="\K[^"]+' | head -n 1 || true)"
+              PUBLISH_URL="$(printf '%s' "$MSDEPLOY_LINE" | grep -oP 'publishUrl="\K[^"]+' | head -n 1 || true)"
+
+              if [[ -z "$USERNAME" || -z "$PASSWORD" ]]; then
+                echo "No se pudo leer userName/userPWD del publish profile." >&2
+                exit 1
+              fi
+
+              if [[ -n "$PUBLISH_URL" ]]; then
+                SCM_HOST="${PUBLISH_URL%%:*}"
+              else
+                SCM_HOST="${AZURE_WEBAPP_NAME}.scm.azurewebsites.net"
+              fi
+
+              echo "Empaquetando $(PUBLISH_DIR) → $(ZIP_PATH)"
+              (cd "$PUBLISH_DIR" && zip -r "$ZIP_PATH" .)
+
+              echo "Zip Deploy → https://${SCM_HOST}/api/zipdeploy"
+              HTTP_CODE="$(curl -sS -o "$(Agent.TempDirectory)/zipdeploy-response.txt" -w "%{http_code}" \
+                -X POST \
+                -u "${USERNAME}:${PASSWORD}" \
+                -H "Content-Type: application/zip" \
+                --data-binary @"$ZIP_PATH" \
+                "https://${SCM_HOST}/api/zipdeploy")"
+
+              echo "HTTP $HTTP_CODE"
+              cat "$(Agent.TempDirectory)/zipdeploy-response.txt" || true
+              echo
+              if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "202" ]]; then
+                echo "Zip Deploy falló con HTTP $HTTP_CODE" >&2
+                exit 1
+              fi
+            displayName: Zip Deploy via Kudu
             env:
               AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
-
-          - task: AzureRmWebAppDeployment@4
-            displayName: Deploy to Azure Web App
-            inputs:
-              ConnectionType: PublishProfile
-              PublishProfilePath: $(Agent.TempDirectory)/publish-profile.xml
-              PublishProfilePassword: $(PUBLISH_PROFILE_PASSWORD)
-              WebAppKind: webApp
-              WebAppName: $(AZURE_WEBAPP_NAME)
-              Package: $(Pipeline.Workspace)/api-publish
+              AZURE_WEBAPP_NAME: $(AZURE_WEBAPP_NAME)
