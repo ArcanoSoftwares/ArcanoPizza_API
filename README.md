@@ -353,6 +353,23 @@ Paso 6: Ejecutar la API
 
 ---
 
+## CI/CD (Azure Pipelines)
+
+El pipeline está en [`azure-pipelines.yml`](azure-pipelines.yml). El código sigue en GitHub; Azure DevOps solo ejecuta CI/CD.
+
+| Disparo | Qué hace |
+|---------|----------|
+| Push a `main` o ejecución manual | Restore → build → publish → deploy a Azure Web App |
+
+### Variables de pipeline
+
+| Nombre | Tipo | Origen | Uso |
+|--------|------|--------|-----|
+| `AZURE_WEBAPP_NAME` | normal | Nombre del App Service | Deploy |
+| `AZURE_WEBAPP_PUBLISH_PROFILE` | **secreto** | Publish profile XML del App Service (antes en GitHub Secrets) | `AzureRmWebAppDeployment@4` con `ConnectionType: PublishProfile` |
+
+En Azure DevOps: **Pipelines → tu pipeline → Edit → Variables**, o un Variable Group enlazado al pipeline. Migrá los valores desde los secrets de GitHub.
+
 ## Cómo ejecutar el proyecto
 
 ### Requisitos

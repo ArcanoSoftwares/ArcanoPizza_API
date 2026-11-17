@@ -38,18 +38,24 @@ public static class ServiceCollectionExtensions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = 429;
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ =>
-                    RateLimitPartition.GetFixedWindowLimiter("global", _ =>
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                {
+                    var partitionKey = context.Connection.RemoteIpAddress?.ToString()
+                        ?? context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                        ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
                         new FixedWindowRateLimiterOptions
                         {
                             Window = TimeSpan.FromMinutes(1),
-                            PermitLimit = 100
-                        }));
+                            PermitLimit = 120,
+                            QueueLimit = 0
+                        });
+                });
 
                 options.AddFixedWindowLimiter("api", config =>
                 {
                     config.Window = TimeSpan.FromMinutes(1);
-                    config.PermitLimit = 100;
+                    config.PermitLimit = 120;
                 });
 
                 options.AddFixedWindowLimiter("auth", config =>

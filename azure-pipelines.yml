@@ -1,0 +1,86 @@
+# CI/CD API — Azure Pipelines (repo en GitHub)
+# Trigger: push a main. También se puede ejecutar manualmente.
+# Variables: AZURE_WEBAPP_NAME, AZURE_WEBAPP_PUBLISH_PROFILE (secreto)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Build
+    displayName: Build and publish
+    jobs:
+      - job: BuildApi
+        displayName: .NET build
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Setup .NET 10
+            inputs:
+              packageType: sdk
+              version: "10.0.x"
+
+          - bash: |
+              set -euo pipefail
+              if [[ -f "ArcanoPizza_API/ArcanoPizza_API.csproj" ]]; then
+                PROJECT_PATH="ArcanoPizza_API/ArcanoPizza_API.csproj"
+              elif [[ -f "ArcanoPizza_API/ArcanoPizza_API/ArcanoPizza_API.csproj" ]]; then
+                PROJECT_PATH="ArcanoPizza_API/ArcanoPizza_API/ArcanoPizza_API.csproj"
+              elif [[ -f "ArcanoPizza_API.csproj" ]]; then
+                PROJECT_PATH="ArcanoPizza_API.csproj"
+              else
+                echo "No se encontró ArcanoPizza_API.csproj en rutas conocidas." >&2
+                ls -la
+                exit 1
+              fi
+              echo "##vso[task.setvariable variable=PROJECT_PATH]$PROJECT_PATH"
+              echo "Usando PROJECT_PATH=$PROJECT_PATH"
+            displayName: Resolve project path
+
+          - script: dotnet restore "$(PROJECT_PATH)"
+            displayName: Restore
+
+          - script: dotnet build "$(PROJECT_PATH)" -c Release --no-restore
+            displayName: Build
+
+          - script: dotnet publish "$(PROJECT_PATH)" -c Release -o "$(Build.ArtifactStagingDirectory)/publish" --no-build
+            displayName: Publish
+
+          - publish: $(Build.ArtifactStagingDirectory)/publish
+            artifact: api-publish
+            displayName: Upload artifact
+
+  - stage: Deploy
+    displayName: Deploy Web App
+    dependsOn: Build
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: DeployApi
+        displayName: Azure Web App
+        steps:
+          - download: current
+            artifact: api-publish
+            displayName: Download artifact
+
+          - bash: |
+              set -euo pipefail
+              printf '%s\n' "$AZURE_WEBAPP_PUBLISH_PROFILE" > "$(Agent.TempDirectory)/publish-profile.xml"
+            displayName: Write publish profile
+            env:
+              AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
+
+          - task: AzureRmWebAppDeployment@4
+            displayName: Deploy to Azure Web App
+            inputs:
+              ConnectionType: PublishProfile
+              PublishProfilePath: $(Agent.TempDirectory)/publish-profile.xml
+              WebAppKind: webApp
+              WebAppName: $(AZURE_WEBAPP_NAME)
+              Package: $(Pipeline.Workspace)/api-publish
