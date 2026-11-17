@@ -366,7 +366,7 @@ El pipeline está en [`azure-pipelines.yml`](azure-pipelines.yml). El código si
 | Nombre | Tipo | Origen | Uso |
 |--------|------|--------|-----|
 | `AZURE_WEBAPP_NAME` | normal | Nombre del App Service | Deploy |
-| `AZURE_WEBAPP_PUBLISH_PROFILE` | **secreto** | Publish profile XML del App Service (antes en GitHub Secrets) | `AzureRmWebAppDeployment@4` con `ConnectionType: PublishProfile` |
+| `AZURE_WEBAPP_PUBLISH_PROFILE` | **secreto** | Publish profile XML del App Service (antes en GitHub Secrets). El pipeline saca `userPWD` del XML. | `AzureRmWebAppDeployment@4` con `ConnectionType: PublishProfile` |
 
 En Azure DevOps: **Pipelines → tu pipeline → Edit → Variables**, o un Variable Group enlazado al pipeline. Migrá los valores desde los secrets de GitHub.
 
