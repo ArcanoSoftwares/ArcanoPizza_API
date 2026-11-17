@@ -9,15 +9,14 @@ trigger:
 
 pr: none
 
-pool:
-  vmImage: ubuntu-latest
-
 stages:
   - stage: Build
     displayName: Build and publish
     jobs:
       - job: BuildApi
         displayName: .NET build
+        pool:
+          vmImage: ubuntu-latest
         steps:
           - checkout: self
 
@@ -64,23 +63,28 @@ stages:
     jobs:
       - job: DeployApi
         displayName: Azure Web App
+        # PublishProfile + WebDeploy solo funciona en agente Windows.
+        pool:
+          vmImage: windows-latest
         steps:
           - download: current
             artifact: api-publish
             displayName: Download artifact
 
-          - bash: |
-              set -euo pipefail
-              PROFILE_PATH="$(Agent.TempDirectory)/publish-profile.xml"
-              printf '%s\n' "$AZURE_WEBAPP_PUBLISH_PROFILE" > "$PROFILE_PATH"
+          - powershell: |
+              $ErrorActionPreference = 'Stop'
+              $profilePath = Join-Path $env:AGENT_TEMPDIRECTORY 'publish-profile.xml'
+              Set-Content -Path $profilePath -Value $env:AZURE_WEBAPP_PUBLISH_PROFILE -Encoding UTF8
 
-              # AzureRmWebAppDeployment@4 exige PublishProfilePassword aparte del XML.
-              PASSWORD="$(grep -oP 'userPWD="\K[^"]+' "$PROFILE_PATH" | head -n 1 || true)"
-              if [[ -z "$PASSWORD" ]]; then
-                echo "No se encontró userPWD en el publish profile." >&2
-                exit 1
-              fi
-              echo "##vso[task.setvariable variable=PUBLISH_PROFILE_PASSWORD;issecret=true]$PASSWORD"
+              $match = [regex]::Match(
+                (Get-Content -Raw $profilePath),
+                'userPWD="([^"]+)"'
+              )
+              if (-not $match.Success) {
+                throw 'No se encontró userPWD en el publish profile.'
+              }
+              $password = $match.Groups[1].Value
+              Write-Host "##vso[task.setvariable variable=PUBLISH_PROFILE_PASSWORD;issecret=true]$password"
             displayName: Write publish profile
             env:
               AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
