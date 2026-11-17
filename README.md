@@ -24,6 +24,8 @@ dotnet ef database update --project ArcanoPizza_API.Data --startup-project Arcan
 dotnet run --project ArcanoPizza_API
 ```
 
+
+Texto de prueba para la practica devops
 ---
 
 ## Workflow de desarrollo
