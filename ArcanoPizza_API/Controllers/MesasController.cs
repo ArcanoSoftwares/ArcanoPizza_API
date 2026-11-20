@@ -49,7 +49,7 @@ public class MesasController : ControllerBase
         var (ok, error, status) = await _mesas.CambiarEstadoAsync(id, dto.Estado, ct);
         if (!ok)
             return StatusCode(status, new { mensaje = error });
-        return Ok(new { mensaje = "Estado de mesa actualizado", estado = dto.Estado });
+        return Ok(new { mensaje = "Estado de mesa actualizado CORRECTAMENTE", estado = dto.Estado });
     }
 
     [HttpDelete("{id:int}")]
